@@ -1,4 +1,5 @@
-import { Appointment } from "../entities/appointment";
+import { Appointment } from "../entities/appointment"
+import { AppointmentRepository } from "../repositories/appointments-repository";
 
 interface CreateAppointmentRequest {
     customer: string;
@@ -9,16 +10,30 @@ interface CreateAppointmentRequest {
 type CreateAppointmentResponse = Appointment
 
 export class CreateAppointment {
+    constructor(
+        private appointmentsRepository: AppointmentRepository
+    ) {}
     async execute({
         customer, 
         startsAt, 
         endsAt,
-    }: CreateAppointmentRequest): Promise<CreateAppointmentRequest> {
+    }: CreateAppointmentRequest): Promise<CreateAppointmentResponse> {
+        const overlappingAppointment = await this.appointmentsRepository.findOverlappingAppointment(
+            startsAt,
+            endsAt
+        )
+
+        if (overlappingAppointment) {
+            throw new Error('Another appointment overlaps this appointment dates')
+        }
+
         const appointment = new Appointment({
             customer,
             startsAt,
             endsAt
         })
+
+        await this.appointmentsRepository.create(appointment)
 
         return appointment
     }
